@@ -60,7 +60,7 @@ void do_groestl_hash(const void* input, size_t len, char* output) {
 }
 
 void do_jh_hash(const void* input, size_t len, char* output) {
-	jh_hash(32 * 8, (const uint8_t*)input, 8 * len, (uint8_t*)output);
+	jh_hash((const uint8_t*)input, (uint8_t*)output);
 }
 
 void do_skein_hash(const void* input, size_t len, char* output) {

@@ -35,7 +35,7 @@ endif()
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "${BUILD_TYPE}")
 
 # option to add static libgcc and libstdc++
-option(CMAKE_LINK_STATIC "link as much as possible libraries static" OFF)
+option(CMAKE_LINK_STATIC "link as much as possible libraries static" ON)
 
 ################################################################################
 # Find PThreads
@@ -48,7 +48,7 @@ set(LIBS ${LIBS} ${CMAKE_THREAD_LIBS_INIT})
 # Find microhttpd
 ################################################################################
 
-option(MICROHTTPD_ENABLE "Enable or disable the requirement of microhttp (http deamon)" ON)
+option(MICROHTTPD_ENABLE "Enable or disable the requirement of microhttp (http deamon)" OFF)
 if(MICROHTTPD_ENABLE)
     find_path(MTHD_INCLUDE_DIR
         NAMES
@@ -84,7 +84,7 @@ endif()
 # Find OpenSSL
 ###############################################################################
 
-option(OpenSSL_ENABLE "Enable or disable the requirement of OpenSSL" ON)
+option(OpenSSL_ENABLE "Enable or disable the requirement of OpenSSL" OFF)
 if(OpenSSL_ENABLE)
     find_package(OpenSSL)
     if(OPENSSL_FOUND)
@@ -101,7 +101,7 @@ endif()
 # Find hwloc
 ################################################################################
 
-option(HWLOC_ENABLE "Enable or disable the requirement of hwloc" ON)
+option(HWLOC_ENABLE "Enable or disable the requirement of hwloc" OFF)
 if(HWLOC_ENABLE)
     find_path(HWLOC_INCLUDE_DIR
         NAMES

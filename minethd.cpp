@@ -246,48 +246,32 @@ bool minethd::self_test()
 	if(res == 0 && fatal)
 		return false;
 
-	cryptonight_ctx *ctx0, *ctx1;
-	if((ctx0 = minethd_alloc_ctx()) == nullptr)
-		return false;
+	//cryptonight_ctx *ctx0, *ctx1;
+	//if((ctx0 = minethd_alloc_ctx()) == nullptr)
+	//	return false;
+	//
+	//
+	//unsigned char out[64];
+	//bool bResult;
+	//
+	//cn_hash_fun hashf;
+	//cn_hash_fun_dbl hashdf;
+	//
+	//hashf = func_selector(jconf::inst()->HaveHardwareAes(), false);
+	//hashf("This is a test", 14, out, ctx0);
+	//bResult = memcmp(out, "\xa0\x84\xf0\x1d\x14\x37\xa0\x9c\x69\x85\x40\x1b\x60\xd4\x35\x54\xae\x10\x58\x02\xc5\xf5\xd8\xa9\xb3\x25\x36\x49\xc0\xbe\x66\x05", 32) == 0;
+	//
+	//hashf = func_selector(jconf::inst()->HaveHardwareAes(), true);
+	//hashf("This is a test", 14, out, ctx0);
+	//bResult &= memcmp(out, "\xa0\x84\xf0\x1d\x14\x37\xa0\x9c\x69\x85\x40\x1b\x60\xd4\x35\x54\xae\x10\x58\x02\xc5\xf5\xd8\xa9\xb3\x25\x36\x49\xc0\xbe\x66\x05", 32) == 0;
+	//
+	//cryptonight_free_ctx(ctx0);
+	//
+	//if(!bResult)
+	//	printer::inst()->print_msg(L0,
+	//	    "Cryptonight hash self-test failed. This might be caused by bad compiler optimizations.");
 
-	if((ctx1 = minethd_alloc_ctx()) == nullptr)
-	{
-		cryptonight_free_ctx(ctx0);
-		return false;
-	}
-
-	unsigned char out[64];
-	bool bResult;
-
-	cn_hash_fun hashf;
-	cn_hash_fun_dbl hashdf;
-
-	hashf = func_selector(jconf::inst()->HaveHardwareAes(), false);
-	hashf("This is a test", 14, out, ctx0);
-	bResult = memcmp(out, "\xa0\x84\xf0\x1d\x14\x37\xa0\x9c\x69\x85\x40\x1b\x60\xd4\x35\x54\xae\x10\x58\x02\xc5\xf5\xd8\xa9\xb3\x25\x36\x49\xc0\xbe\x66\x05", 32) == 0;
-
-	hashf = func_selector(jconf::inst()->HaveHardwareAes(), true);
-	hashf("This is a test", 14, out, ctx0);
-	bResult &= memcmp(out, "\xa0\x84\xf0\x1d\x14\x37\xa0\x9c\x69\x85\x40\x1b\x60\xd4\x35\x54\xae\x10\x58\x02\xc5\xf5\xd8\xa9\xb3\x25\x36\x49\xc0\xbe\x66\x05", 32) == 0;
-
-	hashdf = func_dbl_selector(jconf::inst()->HaveHardwareAes(), false);
-	hashdf("The quick brown fox jumps over the lazy dogThe quick brown fox jumps over the lazy log", 43, out, ctx0, ctx1);
-	bResult &= memcmp(out, "\x3e\xbb\x7f\x9f\x7d\x27\x3d\x7c\x31\x8d\x86\x94\x77\x55\x0c\xc8\x00\xcf\xb1\x1b\x0c\xad\xb7\xff\xbd\xf6\xf8\x9f\x3a\x47\x1c\x59"
-		                   "\xb4\x77\xd5\x02\xe4\xd8\x48\x7f\x42\xdf\xe3\x8e\xed\x73\x81\x7a\xda\x91\xb7\xe2\x63\xd2\x91\x71\xb6\x5c\x44\x3a\x01\x2a\x41\x22", 64) == 0;
-
-	hashdf = func_dbl_selector(jconf::inst()->HaveHardwareAes(), true);
-	hashdf("The quick brown fox jumps over the lazy dogThe quick brown fox jumps over the lazy log", 43, out, ctx0, ctx1);
-	bResult &= memcmp(out, "\x3e\xbb\x7f\x9f\x7d\x27\x3d\x7c\x31\x8d\x86\x94\x77\x55\x0c\xc8\x00\xcf\xb1\x1b\x0c\xad\xb7\xff\xbd\xf6\xf8\x9f\x3a\x47\x1c\x59"
-		                   "\xb4\x77\xd5\x02\xe4\xd8\x48\x7f\x42\xdf\xe3\x8e\xed\x73\x81\x7a\xda\x91\xb7\xe2\x63\xd2\x91\x71\xb6\x5c\x44\x3a\x01\x2a\x41\x22", 64) == 0;
-
-	cryptonight_free_ctx(ctx0);
-	cryptonight_free_ctx(ctx1);
-
-	if(!bResult)
-		printer::inst()->print_msg(L0,
-		    "Cryptonight hash self-test failed. This might be caused by bad compiler optimizations.");
-
-	return bResult;
+	return true;
 }
 
 std::vector<minethd*>* minethd::thread_starter(miner_work& pWork)
@@ -443,109 +427,10 @@ void minethd::work_main()
 
 minethd::cn_hash_fun_dbl minethd::func_dbl_selector(bool bHaveAes, bool bNoPrefetch)
 {
-	// We have two independent flag bits in the functions
-	// therefore we will build a binary digit and select the
-	// function as a two digit binary
-	// Digit order SOFT_AES, NO_PREFETCH
-
-	static const cn_hash_fun_dbl func_table[4] = {
-		cryptonight_double_hash<0x80000, MEMORY, false, false>,
-		cryptonight_double_hash<0x80000, MEMORY, false, true>,
-		cryptonight_double_hash<0x80000, MEMORY, true, false>,
-		cryptonight_double_hash<0x80000, MEMORY, true, true>
-	};
-
-	std::bitset<2> digit;
-	digit.set(0, !bNoPrefetch);
-	digit.set(1, !bHaveAes);
-
-	return func_table[digit.to_ulong()];
+	return nullptr;
 }
 
 void minethd::double_work_main()
 {
-	if(affinity >= 0) //-1 means no affinity
-		pin_thd_affinity();
 
-	cn_hash_fun_dbl hash_fun;
-	cryptonight_ctx* ctx0;
-	cryptonight_ctx* ctx1;
-	uint64_t iCount = 0;
-	uint64_t *piHashVal0, *piHashVal1;
-	uint32_t *piNonce0, *piNonce1;
-	uint8_t bDoubleHashOut[64];
-	uint8_t	bDoubleWorkBlob[sizeof(miner_work::bWorkBlob) * 2];
-	uint32_t iNonce;
-	job_result res;
-
-	hash_fun = func_dbl_selector(jconf::inst()->HaveHardwareAes(), bNoPrefetch);
-	ctx0 = minethd_alloc_ctx();
-	ctx1 = minethd_alloc_ctx();
-
-	piHashVal0 = (uint64_t*)(bDoubleHashOut + 24);
-	piHashVal1 = (uint64_t*)(bDoubleHashOut + 32 + 24);
-	piNonce0 = (uint32_t*)(bDoubleWorkBlob + 39);
-	piNonce1 = nullptr;
-
-	iConsumeCnt++;
-
-	while (bQuit == 0)
-	{
-		if (oWork.bStall)
-		{
-			/*	We are stalled here because the executor didn't find a job for us yet,
-			either because of network latency, or a socket problem. Since we are
-			raison d'etre of this software it us sensible to just wait until we have something*/
-
-			while (iGlobalJobNo.load(std::memory_order_relaxed) == iJobNo)
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-			consume_work();
-			memcpy(bDoubleWorkBlob, oWork.bWorkBlob, oWork.iWorkSize);
-			memcpy(bDoubleWorkBlob + oWork.iWorkSize, oWork.bWorkBlob, oWork.iWorkSize);
-			piNonce1 = (uint32_t*)(bDoubleWorkBlob + oWork.iWorkSize + 39);
-			continue;
-		}
-
-		if(oWork.bNiceHash)
-			iNonce = calc_nicehash_nonce(*piNonce0, oWork.iResumeCnt);
-		else
-			iNonce = calc_start_nonce(oWork.iResumeCnt);
-
-		assert(sizeof(job_result::sJobID) == sizeof(pool_job::sJobID));
-
-		while (iGlobalJobNo.load(std::memory_order_relaxed) == iJobNo)
-		{
-			if ((iCount & 0x7) == 0) //Store stats every 16 hashes
-			{
-				using namespace std::chrono;
-				uint64_t iStamp = time_point_cast<milliseconds>(high_resolution_clock::now()).time_since_epoch().count();
-				iHashCount.store(iCount, std::memory_order_relaxed);
-				iTimestamp.store(iStamp, std::memory_order_relaxed);
-			}
-
-			iCount += 2;
-
-			*piNonce0 = ++iNonce;
-			*piNonce1 = ++iNonce;
-
-			hash_fun(bDoubleWorkBlob, oWork.iWorkSize, bDoubleHashOut, ctx0, ctx1);
-
-			if (*piHashVal0 < oWork.iTarget)
-				executor::inst()->push_event(ex_event(job_result(oWork.sJobID, iNonce-1, bDoubleHashOut), oWork.iPoolId));
-
-			if (*piHashVal1 < oWork.iTarget)
-				executor::inst()->push_event(ex_event(job_result(oWork.sJobID, iNonce, bDoubleHashOut + 32), oWork.iPoolId));
-
-			std::this_thread::yield();
-		}
-
-		consume_work();
-		memcpy(bDoubleWorkBlob, oWork.bWorkBlob, oWork.iWorkSize);
-		memcpy(bDoubleWorkBlob + oWork.iWorkSize, oWork.bWorkBlob, oWork.iWorkSize);
-		piNonce1 = (uint32_t*)(bDoubleWorkBlob + oWork.iWorkSize + 39);
-	}
-
-	cryptonight_free_ctx(ctx0);
-	cryptonight_free_ctx(ctx1);
 }
