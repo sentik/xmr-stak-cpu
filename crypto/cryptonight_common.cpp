@@ -52,7 +52,7 @@ extern "C"
 #endif // _WIN32
 
 void do_blake_hash(const void* input, size_t len, char* output) {
-	blake256_hash((uint8_t*)output, (const uint8_t*)input, len);
+	blake256_hash(reinterpret_cast<uint8_t*>(output), static_cast<const uint8_t*>(input));
 }
 
 void do_groestl_hash(const void* input, size_t len, char* output) {
