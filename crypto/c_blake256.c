@@ -55,20 +55,26 @@ const u8 padding[] =
 
 
 
-static int blake256_compress(state * state, const u8 * datablock) 
+static void blake256_compress(state * state, const u8 * datablock) 
 {
 	__m128i row1, row2, row3, row4;
 	__m128i buf1, buf2;
-	const __m128i r8 = _mm_set_epi8(12, 15, 14, 13, 8, 11, 10, 9, 4, 7, 6, 5, 0, 3, 2, 1);
-	const __m128i r16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+	
+	//const __m128i r8 = _mm_set_epi8(12, 15, 14, 13, 8, 11, 10, 9, 4, 7, 6, 5, 0, 3, 2, 1);
+	static const __m128i r8 = { {1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12 } };
+	
+	//const __m128i r16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
+	static const __m128i r16 = { { 2,3,0,1,6,7,4,5,10,11,8,9,14,15,12,13 } };
 
 	u32 m[16];
 	int r;
 	u64 t;
 
 	__m128i m0, m1, m2, m3;
-	const __m128i u8to32 = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3);
-	__m128i tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6, tmp7;
+	//const __m128i u8to32 = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3);
+	static __m128i u8to32 = { {3,2,1,0,7,6,5,4,11,10,9,8,15,14,13,12} };
+
+	__m128i tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6;
 
 	m0 = _mm_shuffle_epi8(_mm_loadu_si128((__m128i*)(datablock + 00)), u8to32);
 	m1 = _mm_shuffle_epi8(_mm_loadu_si128((__m128i*)(datablock + 16)), u8to32);
@@ -92,8 +98,6 @@ static int blake256_compress(state * state, const u8 * datablock)
 	tmp0 = _mm_load_si128((__m128i*)&(state->h[4]));
 	tmp0 = _mm_xor_si128(tmp0, _mm_xor_si128(row2, row4));
 	_mm_store_si128((__m128i*)&(state->h[4]), tmp0);
-
-	return 0;
 }
 
 
