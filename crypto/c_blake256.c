@@ -55,49 +55,48 @@ const u8 padding[] =
 
 
 
-static void blake256_compress(state * state, const u8 * datablock, const u32 key) 
+static void blake256_compress(u32* h, const u8 * datablock, const u32 key)
 {
-	__m128i row1, row2, row3, row4;
 	__m128i buf1, buf2;
 	
+	//=======================================================================================
 	//const __m128i r8 = _mm_set_epi8(12, 15, 14, 13, 8, 11, 10, 9, 4, 7, 6, 5, 0, 3, 2, 1);
 	static const __m128i r8 = { {1, 2, 3, 0, 5, 6, 7, 4, 9, 10, 11, 8, 13, 14, 15, 12 } };
 	
 	//const __m128i r16 = _mm_set_epi8(13, 12, 15, 14, 9, 8, 11, 10, 5, 4, 7, 6, 1, 0, 3, 2);
 	static const __m128i r16 = { { 2,3,0,1,6,7,4,5,10,11,8,9,14,15,12,13 } };
 
+	//const __m128i u8to32 = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3);
+	static __m128i u8to32 = { { 3,2,1,0,7,6,5,4,11,10,9,8,15,14,13,12 } };
+
+	//=======================================================================================
 	u32 m[16];
 	int r;
 	u64 t;
 
-	__m128i m0, m1, m2, m3;
-	//const __m128i u8to32 = _mm_set_epi8(12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3);
-	static __m128i u8to32 = { {3,2,1,0,7,6,5,4,11,10,9,8,15,14,13,12} };
-
+	//=======================================================================================
 	__m128i tmp0, tmp1, tmp2, tmp3, tmp4, tmp5, tmp6;
 
-	m0 = _mm_shuffle_epi8(_mm_loadu_si128((__m128i*)(datablock + 00)), u8to32);
-	m1 = _mm_shuffle_epi8(_mm_loadu_si128((__m128i*)(datablock + 16)), u8to32);
-	m2 = _mm_shuffle_epi8(_mm_loadu_si128((__m128i*)(datablock + 32)), u8to32);
-	m3 = _mm_shuffle_epi8(_mm_loadu_si128((__m128i*)(datablock + 48)), u8to32);
+	__m128i m0 = _mm_shuffle_epi8(_mm_loadu_si128((__m128i*)(datablock + 00)), u8to32);
+	__m128i m1 = _mm_shuffle_epi8(_mm_loadu_si128((__m128i*)(datablock + 16)), u8to32);
+	__m128i m2 = _mm_shuffle_epi8(_mm_loadu_si128((__m128i*)(datablock + 32)), u8to32);
+	__m128i m3 = _mm_shuffle_epi8(_mm_loadu_si128((__m128i*)(datablock + 48)), u8to32);
 
-	row1 = _mm_set_epi32(state->h[3], state->h[2],
-		state->h[1], state->h[0]);
-	row2 = _mm_set_epi32(state->h[7], state->h[6],
-		state->h[5], state->h[4]);
-	row3 = _mm_set_epi32(0x03707344, 0x13198A2E, 0x85A308D3, 0x243F6A88);
+	__m128i row1 = _mm_set_epi32(h[3], h[2], h[1], h[0]);
+	__m128i row2 = _mm_set_epi32(h[7], h[6], h[5], h[4]);
 
-	row4 = _mm_set_epi32(0xEC4E6C89, 0x082EFA98, 0x299F31D0 ^ key, 0xA4093822 ^ key);
+	__m128i row3 = _mm_set_epi32(0x03707344, 0x13198A2E, 0x85A308D3, 0x243F6A88);
+	__m128i row4 = _mm_set_epi32(0xEC4E6C89, 0x082EFA98, 0x299F31D0 ^ key, 0xA4093822 ^ key);
 
 #include "c_blake256.rounds.sse41.h"
 
-	tmp0 = _mm_load_si128((__m128i*)state->h);
+	tmp0 = _mm_load_si128((__m128i*)h);
 	tmp0 = _mm_xor_si128(tmp0, _mm_xor_si128(row1, row3));
-	_mm_store_si128((__m128i*)state->h, tmp0);
+	_mm_store_si128((__m128i*)h, tmp0);
 
-	tmp0 = _mm_load_si128((__m128i*)&(state->h[4]));
+	tmp0 = _mm_load_si128((__m128i*)&(h[4]));
 	tmp0 = _mm_xor_si128(tmp0, _mm_xor_si128(row2, row4));
-	_mm_store_si128((__m128i*)&(state->h[4]), tmp0);
+	_mm_store_si128((__m128i*)&(h[4]), tmp0);
 }
 
 
@@ -118,51 +117,27 @@ void blake256_init(state *S)
 }
 
 
-void blake256_update64(state *S, const u8 *data)
-{
-	static const int left = 56;
-	static const int fill = 8;
-
-	memcpy((void*)(S->buf + left), (void*)data, fill);
-	blake256_compress(S, S->buf, 1600);
-}
-
-
 void blake256_update1600(state *S, const u8 *data)
 {
-	blake256_compress(S, data, 512);
-	data += 64;
-
-	blake256_compress(S, data, 1024);
-	data += 64;
-
-	blake256_compress(S, data, 1536);
-	data += 64;
-
-	memcpy((void*)(S->buf), (void*)data, 8);
+	blake256_compress(S->h, &data[0], 512);
+	blake256_compress(S->h, &data[64], 1024);
+	blake256_compress(S->h, &data[128], 1536);
+	memcpy((void*)(S->buf), (void*)&data[192], 8);
 }
 
-void blake256_update376(state *S, const u8 *data)
+void blake256_final(state *S, u8 *digest) 
 {
-	memcpy((void*)(S->buf + 8), (void*)data, 47);
-}
+	static const u8 zo = 0x01;
+	static const u8 msglen[8] = 
+	{
+		0, 0, 0, 0, 0, 0, 6, 64
+	};
 
-void blake256_update8(state *S, const u8 *data)
-{
-	memcpy((void*)(S->buf + 55), (void*)data, 1);
-}
-
-void blake256_final(state *S, u8 *digest) {
-
-	u8 msglen[8], zo = 0x01, oo = 0x81;
-
-	U32TO8(msglen + 0, 0);
-	U32TO8(msglen + 4, 1600);
-
-	blake256_update376(S, padding);
-	blake256_update8(S, &zo);
-
-	blake256_update64(S, msglen);
+	memcpy(&S->buf[8], padding, 47);
+	memcpy(&S->buf[55], &zo, 1);
+	memcpy(&S->buf[56], msglen, 8);
+	
+	blake256_compress(S->h, S->buf, 1600);
 
 	U32TO8(digest + 0, S->h[0]);
 	U32TO8(digest + 4, S->h[1]);
