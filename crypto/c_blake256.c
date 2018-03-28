@@ -17,7 +17,7 @@ typedef unsigned char u8;
   (p)[2] = (u8)((v) >>  8); (p)[3] = (u8)((v)      ); 
 
 typedef struct {
-	u32 h[8], t;
+	u32 h[8];
 	u8  buf[64];
 } state;
 
@@ -55,7 +55,7 @@ const u8 padding[] =
 
 
 
-static void blake256_compress(state * state, const u8 * datablock) 
+static void blake256_compress(state * state, const u8 * datablock, const u32 key) 
 {
 	__m128i row1, row2, row3, row4;
 	__m128i buf1, buf2;
@@ -87,7 +87,7 @@ static void blake256_compress(state * state, const u8 * datablock)
 		state->h[5], state->h[4]);
 	row3 = _mm_set_epi32(0x03707344, 0x13198A2E, 0x85A308D3, 0x243F6A88);
 
-	row4 = _mm_set_epi32(0xEC4E6C89, 0x082EFA98, 0x299F31D0 ^ state->t, 0xA4093822 ^ state->t);
+	row4 = _mm_set_epi32(0xEC4E6C89, 0x082EFA98, 0x299F31D0 ^ key, 0xA4093822 ^ key);
 
 #include "c_blake256.rounds.sse41.h"
 
@@ -115,9 +115,6 @@ void blake256_init(state *S)
 	};
 
 	memcpy(S->h, hs, sizeof(hs));
-
-	S->t = 0;
-	//S->s[0] = S->s[1] = S->s[2] = S->s[3] = 0;
 }
 
 
@@ -127,23 +124,19 @@ void blake256_update64(state *S, const u8 *data)
 	static const int fill = 8;
 
 	memcpy((void*)(S->buf + left), (void*)data, fill);
-	S->t += 512;
-	blake256_compress(S, S->buf);
+	blake256_compress(S, S->buf, 1600);
 }
 
 
 void blake256_update1600(state *S, const u8 *data)
 {
-	S->t += 512;
-	blake256_compress(S, data);
+	blake256_compress(S, data, 512);
 	data += 64;
 
-	S->t += 512;
-	blake256_compress(S, data);
+	blake256_compress(S, data, 1024);
 	data += 64;
 
-	S->t += 512;
-	blake256_compress(S, data);
+	blake256_compress(S, data, 1536);
 	data += 64;
 
 	memcpy((void*)(S->buf), (void*)data, 8);
@@ -166,11 +159,9 @@ void blake256_final(state *S, u8 *digest) {
 	U32TO8(msglen + 0, 0);
 	U32TO8(msglen + 4, 1600);
 
-	S->t -= 376;
 	blake256_update376(S, padding);
 	blake256_update8(S, &zo);
 
-	S->t -= 72;
 	blake256_update64(S, msglen);
 
 	U32TO8(digest + 0, S->h[0]);
@@ -190,5 +181,4 @@ void blake256_hash(u8 *out, const u8 *in)
 	blake256_init(&S);
 	blake256_update1600(&S, in);
 	blake256_final(&S, out);
-	return 0;
 }
