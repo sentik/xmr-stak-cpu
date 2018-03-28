@@ -25,6 +25,7 @@ extern "C"
 {
 #include "c_groestl.h"
 #include "c_blake256.h"
+
 #include "c_jh.h"
 #include "c_skein.h"
 }
@@ -51,8 +52,17 @@ extern "C"
 #include <string.h>
 #endif // _WIN32
 
-void do_blake_hash(const void* input, size_t len, char* output) {
+void do_blake_hash(const void* input, size_t len, char* output) 
+{
+	uint8_t tmp[32];
+	blake256_hash2(reinterpret_cast<uint8_t*>(tmp), static_cast<const uint8_t*>(input), len);
 	blake256_hash(reinterpret_cast<uint8_t*>(output), static_cast<const uint8_t*>(input));
+	auto eq = memcmp(tmp, output, 32) == 0;
+	if (eq)
+	{
+		__noop();
+	}
+
 }
 
 void do_groestl_hash(const void* input, size_t len, char* output) {
