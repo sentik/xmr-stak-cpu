@@ -403,7 +403,7 @@ static const __m128i VPERM_SB4[2] = { {.m128i_u32 = { 0xC393EA00,0x3D50AED7,0x87
   SUBSH_MASK[5] = _mm_set_epi32(0x09080f0e, 0x0d0c0b0a, 0x04030201, 0x00070605);\
   SUBSH_MASK[6] = _mm_set_epi32(0x0b0a0908, 0x0f0e0d0c, 0x05040302, 0x01000706);\
   SUBSH_MASK[7] = _mm_set_epi32(0x0d0c0b0a, 0x09080f0e, 0x06050403, 0x02010007);\
-  for(uint64_t i = 0; i < ROUNDS512; i++)\
+  for(uint64_t i = 0; i < 10; i++)\
   {\
     ROUND_CONST_L0[i] = _mm_set_epi32(0xffffffff, 0xffffffff, 0x70605040 ^ (i * 0x01010101), 0x30201000 ^ (i * 0x01010101));\
     ROUND_CONST_L7[i] = _mm_set_epi32(0x8f9fafbf ^ (i * 0x01010101), 0xcfdfefff ^ (i * 0x01010101), 0x00000000, 0x00000000);\
@@ -656,10 +656,6 @@ void TF512(uint64_t* h, uint64_t* m)
 	static __m128i TEMP_MUL2[8];
 	static __m128i TEMP_MUL4;
 
-#ifdef IACA_TRACE
-	IACA_START;
-#endif
-
 	/* load message into registers xmm12 - xmm15 */
 	xmm12 = message[0];
 	xmm13 = message[1];
@@ -715,12 +711,6 @@ void TF512(uint64_t* h, uint64_t* m)
 	chaining[1] = xmm1;
 	chaining[2] = xmm2;
 	chaining[3] = xmm3;
-
-#ifdef IACA_TRACE
-	IACA_END;
-#endif
-
-	return;
 }
 
 void OF512(uint64_t* h)
@@ -770,43 +760,12 @@ void OF512(uint64_t* h)
 	return;
 }//OF512()
 
-
-#define LENGTH 256
-
- /* some sizes (number of bytes) */
-#define ROWS 8
-#define LENGTHFIELDLEN ROWS
-
-#define COLS 8
-#define SIZE 64
-#define ROUNDS 10
-
 typedef struct 
 {
-	uint64_t chaining[SIZE / 8];      /* actual state */
-	uint8_t buffer[SIZE];  /* data buffer */
+	uint64_t chaining[8];      /* actual state */
+	uint8_t buffer[64];  /* data buffer */
 } hashState;
 
-#include "brg_endian.h"
-#define NEED_UINT_64T
-#include "brg_types.h"
-
-
-#define ROTL64(a,n) ((((a)<<(n))|((a)>>(64-(n))))&li_64(ffffffffffffffff))
-
-#if (PLATFORM_BYTE_ORDER == IS_BIG_ENDIAN)
-#define EXT_BYTE(var,n) ((u8)((u64)(var) >> (8*(7-(n)))))
-#define U64BIG(a) (a)
-#endif /* IS_BIG_ENDIAN */
-
-#if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-#define EXT_BYTE(var,n) ((u8)((u64)(var) >> (8*n)))
-#define U64BIG(a) \
-  ((ROTL64(a, 8) & li_64(000000FF000000FF)) | \
-   (ROTL64(a,24) & li_64(0000FF000000FF00)) | \
-   (ROTL64(a,40) & li_64(00FF000000FF0000)) | \
-   (ROTL64(a,56) & li_64(FF000000FF000000)))
-#endif /* IS_LITTLE_ENDIAN */
 
 /* initialise context */
 void InitOpt(hashState* ctx) 
