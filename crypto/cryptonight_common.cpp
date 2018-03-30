@@ -69,8 +69,17 @@ void do_groestl_hash(const void* input, size_t len, char* output) {
 	groestl((const uint8_t*)input, len * 8, (uint8_t*)output);
 }
 
-void do_jh_hash(const void* input, size_t len, char* output) {
+void do_jh_hash(const void* input, size_t len, char* output) 
+{
+	uint8_t tmp[32];
 	jh_hash((const uint8_t*)input, (uint8_t*)output);
+	jh_hash2(32 * 8, (const uint8_t*)input, 8 * len, (uint8_t*)tmp);
+
+	auto eq = memcmp(tmp, output, 32) == 0;
+	if (eq)
+	{
+		__noop();
+	}
 }
 
 void do_skein_hash(const void* input, size_t len, char* output) {

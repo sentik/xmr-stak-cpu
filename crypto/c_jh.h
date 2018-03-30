@@ -17,3 +17,4 @@
 #include "hash.h"
 
 void jh_hash(const BitSequence *data, BitSequence *hashval);
+void jh_hash2(int hashbitlen, const BitSequence *data, DataLength databitlen, BitSequence *hashval);
