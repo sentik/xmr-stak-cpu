@@ -13,48 +13,31 @@
 #include <tmmintrin.h>
 #include "c_groestl.h"
 
+#include <stdio.h>
+#include <string.h>
+#include <stdint.h>
+
 /* global constants  */
 __m128i ROUND_CONST_Lx;
 __m128i ROUND_CONST_L0[ROUNDS512];
 __m128i ROUND_CONST_L7[ROUNDS512];
-__m128i TRANSP_MASK;
 __m128i SUBSH_MASK[8];
-__m128i ALL_0F;
-__m128i ALL_15;
-__m128i ALL_1B;
-__m128i ALL_63;
-__m128i ALL_FF;
-__m128i VPERM_IPT[2];
-__m128i VPERM_OPT[2];
-__m128i VPERM_INV[2];
-__m128i VPERM_SB1[2];
-__m128i VPERM_SB2[2];
-__m128i VPERM_SB4[2];
-__m128i VPERM_SBO[2];
+
+static const __m128i TRANSP_MASK = { .m128i_u32 = { 0x0c040800, 0x0d050901,0x0e060a02, 0x0f070b03  } };
+static const __m128i ALL_0F = { .m128i_u32 = { 0x0f0f0f0f, 0x0f0f0f0f, 0x0f0f0f0f, 0x0f0f0f0f }};
+static const __m128i ALL_15 = { .m128i_u32 = { 0x15151515, 0x15151515, 0x15151515, 0x15151515 }};
+
+static const __m128i VPERM_IPT[2] = { {.m128i_u32 = { 0x317C4D00,0x4C01307D,0xB0FDCC81,0xCD80B1FC }},{ .m128i_u32 = { 0x5A2A7000,0xC2B2E898,0x52227808,0xCABAE090 } } };
+static const __m128i VPERM_OPT[2] = { {.m128i_u32 = { 0x50BCEC00, 0x01EDBD51, 0xB05C0CE0, 0xE10D5DB1 }}, {.m128i_u32 = { 0xD6B66000,0xFF9F4929, 0xDEBE6808, 0xF7974121 }}};
+static const __m128i VPERM_INV[2] = { {.m128i_u32 = { 0x0F0B0780,0x01040A06,0x02050809,0x030D0E0C }}, {.m128i_u32 = { 0x0D080180 ,0x0E05060F ,0x0A0B0C02 ,0x04070309 }}};
+static const __m128i VPERM_SB1[2] = { {.m128i_u32 = { 0xFAE22300,0x3618D415,0x0D2ED9EF,0x3BF7CCC1 }}, {.m128i_u32 = { 0xCB503E00 ,0xB19BE18F ,0x142AF544 ,0xA5DF7A6E }}};
+static const __m128i VPERM_SB2[2] = { {.m128i_u32 = { 0x0AE12900, 0x69EB8840 ,0xAB82234A ,0xC2A163C8 }}, {.m128i_u32 = { 0x0B712400 ,0xE27A93C6 ,0xBC982FCD ,0x5EB7E955 }}};
+static const __m128i VPERM_SB4[2] = { {.m128i_u32 = { 0xC393EA00,0x3D50AED7,0x876D2914,0xBA44FE79 }}, {.m128i_u32 = { 0x3FD64100, 0xE1E937A0 ,0x49087E9F ,0xA876DE97 }}};
 
 
 #define tos(a)    #a
 #define tostr(a)  tos(a)
 
-#define SET_SHARED_CONSTANTS(){\
-  TRANSP_MASK = _mm_set_epi32(0x0f070b03, 0x0e060a02, 0x0d050901, 0x0c040800);\
-  ALL_1B = _mm_set_epi32(0x1b1b1b1b, 0x1b1b1b1b, 0x1b1b1b1b, 0x1b1b1b1b);\
-  ALL_63 = _mm_set_epi32(0x63636363, 0x63636363, 0x63636363, 0x63636363);\
-  ALL_0F = _mm_set_epi32(0x0f0f0f0f, 0x0f0f0f0f, 0x0f0f0f0f, 0x0f0f0f0f);\
-  ALL_15 = _mm_set_epi32(0x15151515, 0x15151515, 0x15151515, 0x15151515);\
-  VPERM_IPT[0] = _mm_set_epi32(0xCD80B1FC, 0xB0FDCC81, 0x4C01307D, 0x317C4D00);\
-  VPERM_IPT[1] = _mm_set_epi32(0xCABAE090, 0x52227808, 0xC2B2E898, 0x5A2A7000);\
-  VPERM_OPT[0] = _mm_set_epi32(0xE10D5DB1, 0xB05C0CE0, 0x01EDBD51, 0x50BCEC00);\
-  VPERM_OPT[1] = _mm_set_epi32(0xF7974121, 0xDEBE6808, 0xFF9F4929, 0xD6B66000);\
-  VPERM_INV[0] = _mm_set_epi32(0x030D0E0C, 0x02050809, 0x01040A06, 0x0F0B0780);\
-  VPERM_INV[1] = _mm_set_epi32(0x04070309, 0x0A0B0C02, 0x0E05060F, 0x0D080180);\
-  VPERM_SB1[0] = _mm_set_epi32(0x3BF7CCC1, 0x0D2ED9EF, 0x3618D415, 0xFAE22300);\
-  VPERM_SB1[1] = _mm_set_epi32(0xA5DF7A6E, 0x142AF544, 0xB19BE18F, 0xCB503E00);\
-  VPERM_SB2[0] = _mm_set_epi32(0xC2A163C8, 0xAB82234A, 0x69EB8840, 0x0AE12900);\
-  VPERM_SB2[1] = _mm_set_epi32(0x5EB7E955, 0xBC982FCD, 0xE27A93C6, 0x0B712400);\
-  VPERM_SB4[0] = _mm_set_epi32(0xBA44FE79, 0x876D2914, 0x3D50AED7, 0xC393EA00);\
-  VPERM_SB4[1] = _mm_set_epi32(0xA876DE97, 0x49087E9F, 0xE1E937A0, 0x3FD64100);\
-}/**/
 
 /* VPERM
 * Transform w/o settings c*
@@ -412,7 +395,6 @@ __m128i VPERM_SBO[2];
 
 
 #define SET_CONSTANTS(){\
-  SET_SHARED_CONSTANTS();\
   SUBSH_MASK[0] = _mm_set_epi32(0x080f0e0d, 0x0c0b0a09, 0x07060504, 0x03020100);\
   SUBSH_MASK[1] = _mm_set_epi32(0x0a09080f, 0x0e0d0c0b, 0x00070605, 0x04030201);\
   SUBSH_MASK[2] = _mm_set_epi32(0x0c0b0a09, 0x080f0e0d, 0x01000706, 0x05040302);\
@@ -794,61 +776,16 @@ void OF512(uint64_t* h)
  /* some sizes (number of bytes) */
 #define ROWS 8
 #define LENGTHFIELDLEN ROWS
-#define COLS512 8
-#define COLS1024 16
-#define SIZE512 (ROWS*COLS512)
-#define SIZE1024 (ROWS*COLS1024)
-#define ROUNDS512 10
-#define ROUNDS1024 14
 
-#define COLS COLS512
-#define SIZE SIZE512
-#define ROUNDS ROUNDS512
+#define COLS 8
+#define SIZE 64
+#define ROUNDS 10
 
 typedef struct 
 {
 	uint64_t chaining[SIZE / 8];      /* actual state */
-	BitSequence buffer[SIZE];  /* data buffer */
-	uint64_t block_counter;        /* message block counter */
-	int buf_ptr;              /* data buffer pointer */
-	int bits_in_last_byte;    /* no. of message bits in last byte of
-							  data buffer */
-	int columns;              /* no. of columns in state */
-	int statesize;            /* total no. of bytes in state */
+	uint8_t buffer[SIZE];  /* data buffer */
 } hashState;
-
-
- /* digest up to len bytes of input (full blocks only) */
-void Transform(hashState *ctx,
-	const uint8_t *in,
-	unsigned long long len) {
-
-	/* increment block counter */
-	ctx->block_counter += len / SIZE;
-
-	/* digest message, one block at a time */
-	for (; len >= SIZE; len -= SIZE, in += SIZE)
-#if LENGTH<=256
-		TF512((uint64_t*)ctx->chaining, (uint64_t*)in);
-#else
-		TF1024((u64*)ctx->chaining, (u64*)in);
-#endif
-
-	//__asm volatile "emms";
-}
-
-/* given state h, do h <- P(h)+h */
-void OutputTransformation(hashState *ctx) {
-
-	/* determine variant */
-#if (LENGTH <= 256)
-	OF512((uint64_t*)ctx->chaining);
-#else
-	OF1024((u64*)ctx->chaining);
-#endif
-
-	//__asm volatile "emms";
-}
 
 #include "brg_endian.h"
 #define NEED_UINT_64T
@@ -877,144 +814,48 @@ void InitOpt(hashState* ctx) {
 
 	/* set number of state columns and state size depending on
 	variant */
-	ctx->columns = COLS;
-	ctx->statesize = SIZE;
 
 
 	SET_CONSTANTS();
 
-	for (i = 0; i<SIZE / 8; i++)
-		ctx->chaining[i] = 0;
-	for (i = 0; i<SIZE; i++)
-		ctx->buffer[i] = 0;
-
-	//if (ctx->chaining == NULL || ctx->buffer == NULL)
-	//	return FAIL;
-
-	/* set initial value */
-	ctx->chaining[ctx->columns - 1] = U64BIG((uint64_t)LENGTH);
-
+	memset(ctx->chaining, 0, sizeof(ctx->chaining));
+	memset(ctx->buffer, 0,   sizeof(ctx->buffer));
+	ctx->chaining[7] = 281474976710656;
 	INIT(ctx->chaining);
-
-	/* set other variables */
-	ctx->buf_ptr = 0;
-	ctx->block_counter = 0;
-	ctx->bits_in_last_byte = 0;
 }
 
-/* update state with databitlen bits of input */
-void UpdateOpt(hashState* ctx,
-	const BitSequence* input,
-	DataLength databitlen) {
-	int index = 0;
-	int msglen = (int)(databitlen / 8);
-	int rem = (int)(databitlen % 8);
 
-	/* non-integral number of message bytes can only be supplied in the
-	last call to this function */
-	//if (ctx->bits_in_last_byte) return FAIL;
+/* digest up to len bytes of input (full blocks only) */
+void Transform(hashState *ctx,
+	const uint8_t *in,
+	unsigned long long len) 
+{
 
-	/* if the buffer contains data that has not yet been digested, first
-	add data to buffer until full */
-	if (ctx->buf_ptr) {
-		while (ctx->buf_ptr < ctx->statesize && index < msglen) {
-			ctx->buffer[(int)ctx->buf_ptr++] = input[index++];
-		}
-		if (ctx->buf_ptr < ctx->statesize) {
-			/* buffer still not full, return */
-			if (rem) {
-				ctx->bits_in_last_byte = rem;
-				ctx->buffer[(int)ctx->buf_ptr++] = input[index];
-			}
-			//return SUCCESS;
-		}
+	int qq = 0;
 
-		/* digest buffer */
-		ctx->buf_ptr = 0;
-		Transform(ctx, ctx->buffer, ctx->statesize);
+	/* digest message, one block at a time */
+	for (; len >= SIZE; len -= SIZE, in += SIZE)
+	{
+		TF512((uint64_t*)ctx->chaining, (uint64_t*)in);
+		qq++;
 	}
-
-	/* digest bulk of message */
-	Transform(ctx, input + index, msglen - index);
-	index += ((msglen - index) / ctx->statesize)*ctx->statesize;
-
-	/* store remaining data in buffer */
-	while (index < msglen) {
-		ctx->buffer[(int)ctx->buf_ptr++] = input[index++];
-	}
-
-	/* if non-integral number of bytes have been supplied, store
-	remaining bits in last byte, together with information about
-	number of bits */
-	if (rem) {
-		ctx->bits_in_last_byte = rem;
-		ctx->buffer[(int)ctx->buf_ptr++] = input[index];
-	}
-	//return SUCCESS;
 }
-
-#define BILB ctx->bits_in_last_byte
 
 /* finalise: process remaining data (including padding), perform
 output transformation, and write hash result to 'output' */
-HashReturn FinalOpt(hashState* ctx,
-	BitSequence* output) {
-	int i, j = 0, hashbytelen = LENGTH / 8;
-	uint8_t *s = (BitSequence*)ctx->chaining;
+void FinalOpt(hashState* ctx, BitSequence* output) 
+{
+	BitSequence *s = (BitSequence*)ctx->chaining;
 
-	/* pad with '1'-bit and first few '0'-bits */
-	if (BILB) {
-		ctx->buffer[(int)ctx->buf_ptr - 1] &= ((1 << BILB) - 1) << (8 - BILB);
-		ctx->buffer[(int)ctx->buf_ptr - 1] ^= 0x1 << (7 - BILB);
-		BILB = 0;
-	}
-	else ctx->buffer[(int)ctx->buf_ptr++] = 0x80;
-
-	/* pad with '0'-bits */
-	if (ctx->buf_ptr > ctx->statesize - LENGTHFIELDLEN) {
-		/* padding requires two blocks */
-		while (ctx->buf_ptr < ctx->statesize) {
-			ctx->buffer[(int)ctx->buf_ptr++] = 0;
-		}
-		/* digest first padding block */
-		Transform(ctx, ctx->buffer, ctx->statesize);
-		ctx->buf_ptr = 0;
-	}
-	while (ctx->buf_ptr < ctx->statesize - LENGTHFIELDLEN) {
-		ctx->buffer[(int)ctx->buf_ptr++] = 0;
-	}
-
-	/* length padding */
-	ctx->block_counter++;
-	ctx->buf_ptr = ctx->statesize;
-	while (ctx->buf_ptr > ctx->statesize - LENGTHFIELDLEN) {
-		ctx->buffer[(int)--ctx->buf_ptr] = (uint8_t)ctx->block_counter;
-		ctx->block_counter >>= 8;
-	}
+	ctx->buffer[8] = 0x80;
+	ctx->buffer[63] = 4;
 
 	/* digest final padding block */
-	Transform(ctx, ctx->buffer, ctx->statesize);
-	/* perform output transformation */
-	OutputTransformation(ctx);
+	TF512((uint64_t*)ctx->chaining, (uint64_t*)ctx->buffer);
+	OF512((uint64_t*)ctx->chaining);
 
 	/* store hash result in output */
-	for (i = ctx->statesize - hashbytelen; i < ctx->statesize; i++, j++) {
-		output[j] = s[i];
-	}
-
-	/* zeroise relevant variables and deallocate memory */
-
-	for (i = 0; i < ctx->columns; i++) {
-		ctx->chaining[i] = 0;
-	}
-
-	for (i = 0; i < ctx->statesize; i++) {
-		ctx->buffer[i] = 0;
-	}
-	//  free(ctx->chaining);
-	//  free(ctx->buffer);
-
-	return SUCCESS;
+	memcpy(output, &s[32], 32);
 }
 
 /* hash bit sequence */
@@ -1025,8 +866,8 @@ void groestl(const BitSequence* data,	DataLength databitlen,	BitSequence* hashva
 	/* initialise */
 	InitOpt(&context);
 
-	/* process message */
-	UpdateOpt(&context, data, databitlen);
+	Transform(&context, data, 200);
+	memcpy(context.buffer, &data[192], 8);
 
 	/* finalise */
 	FinalOpt(&context, hashval);

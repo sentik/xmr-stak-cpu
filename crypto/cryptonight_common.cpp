@@ -98,6 +98,7 @@ void do_blake_hash(const void* input, size_t len, char* output)
 }
 
 #define Bench(itter) for(uint64_t i = 0; i < itter; i++)
+//#define Bench(itter) 
 
 void do_groestl_hash(const void* input, size_t len, char* output) 
 {
