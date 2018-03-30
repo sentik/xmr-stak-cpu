@@ -52,11 +52,57 @@ extern "C"
 #include <string.h>
 #endif // _WIN32
 
+
+#include <cmath>
+#include <chrono>
+
+struct FWatchDog
+{
+	uint64_t begin;
+	uint64_t end;
+
+	void start()
+	{
+		using namespace std::chrono;
+		begin = time_point_cast<milliseconds>(high_resolution_clock::now()).time_since_epoch().count();
+	}
+
+	void stop()
+	{
+		using namespace std::chrono;
+		end = time_point_cast<milliseconds>(high_resolution_clock::now()).time_since_epoch().count();
+	}
+
+	void log(char* name)
+	{
+		stop();
+		uint64_t delta = end - begin;
+		printf("[%s]: %llu\n", name, delta);
+	}
+
+};
+
 void do_blake_hash(const void* input, size_t len, char* output) 
 {
+	FWatchDog wd;
+
 	uint8_t tmp[32];
-	blake256_hash2(reinterpret_cast<uint8_t*>(tmp), static_cast<const uint8_t*>(input), len);
-	blake256_hash(reinterpret_cast<uint8_t*>(output), static_cast<const uint8_t*>(input));
+
+	wd.start();
+	for (uint64_t i = 0; i < 10000; i++)
+	{
+		blake256_hash2(reinterpret_cast<uint8_t*>(tmp), static_cast<const uint8_t*>(input), len);
+	}
+	wd.log("blake256_hash2 - vanila");
+
+	wd.start();
+	for (uint64_t i = 0; i < 10000; i++)
+	{
+		blake256_hash(reinterpret_cast<uint8_t*>(output), static_cast<const uint8_t*>(input));
+	}
+	wd.log("blake256_hash");
+
+
 	auto eq = memcmp(tmp, output, 32) == 0;
 	if (eq)
 	{
