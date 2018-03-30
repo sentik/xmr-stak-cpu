@@ -45,16 +45,8 @@ typedef struct {
 			       data buffer */
 } groestlHashState;
 
-/*void Init(hashState*);
-void Update(hashState*, const BitSequence*, DataLength);
-void Final(hashState*, BitSequence*); */
-void groestl(const BitSequence*, DataLength, BitSequence*);
-/* NIST API end   */
 
-/*
-int crypto_hash(unsigned char *out,
-		const unsigned char *in,
-		unsigned long long len);
-*/
+void groestl(const BitSequence*, DataLength, BitSequence*);
+void groestlV(const BitSequence*, DataLength, BitSequence*);
 
 #endif /* __hash_h */

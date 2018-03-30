@@ -84,48 +84,45 @@ struct FWatchDog
 
 void do_blake_hash(const void* input, size_t len, char* output) 
 {
-	FWatchDog wd;
+	blake256_hash(reinterpret_cast<uint8_t*>(output), static_cast<const uint8_t*>(input));
 
+
+	//uint8_t tmp[32];
+	//blake256_hash2(reinterpret_cast<uint8_t*>(tmp), static_cast<const uint8_t*>(input), len);
+	//auto eq = memcmp(tmp, output, 32) == 0;
+	//if (eq)
+	//{
+	//	__noop();
+	//}
+
+}
+
+void do_groestl_hash(const void* input, size_t len, char* output) 
+{
 	uint8_t tmp[32];
 
-	wd.start();
-	for (uint64_t i = 0; i < 10000; i++)
-	{
-		blake256_hash2(reinterpret_cast<uint8_t*>(tmp), static_cast<const uint8_t*>(input), len);
-	}
-	wd.log("blake256_hash2 - vanila");
-
-	wd.start();
-	for (uint64_t i = 0; i < 10000; i++)
-	{
-		blake256_hash(reinterpret_cast<uint8_t*>(output), static_cast<const uint8_t*>(input));
-	}
-	wd.log("blake256_hash");
-
+	groestl((const uint8_t*)input, len * 8, (uint8_t*)output);
+	groestlV((const uint8_t*)input, len * 8, (uint8_t*)tmp);
 
 	auto eq = memcmp(tmp, output, 32) == 0;
 	if (eq)
 	{
 		__noop();
 	}
-
-}
-
-void do_groestl_hash(const void* input, size_t len, char* output) {
-	groestl((const uint8_t*)input, len * 8, (uint8_t*)output);
 }
 
 void do_jh_hash(const void* input, size_t len, char* output) 
 {
-	uint8_t tmp[32];
 	jh_hash((const uint8_t*)input, (uint8_t*)output);
-	jh_hash2(32 * 8, (const uint8_t*)input, 8 * len, (uint8_t*)tmp);
 
-	auto eq = memcmp(tmp, output, 32) == 0;
-	if (eq)
-	{
-		__noop();
-	}
+	//uint8_t tmp[32];
+	//jh_hash2(32 * 8, (const uint8_t*)input, 8 * len, (uint8_t*)tmp);
+	//
+	//auto eq = memcmp(tmp, output, 32) == 0;
+	//if (eq)
+	//{
+	//	__noop();
+	//}
 }
 
 void do_skein_hash(const void* input, size_t len, char* output) {
