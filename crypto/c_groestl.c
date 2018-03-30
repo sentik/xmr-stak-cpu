@@ -403,7 +403,7 @@ static const __m128i VPERM_SB4[2] = { {.m128i_u32 = { 0xC393EA00,0x3D50AED7,0x87
   SUBSH_MASK[5] = _mm_set_epi32(0x09080f0e, 0x0d0c0b0a, 0x04030201, 0x00070605);\
   SUBSH_MASK[6] = _mm_set_epi32(0x0b0a0908, 0x0f0e0d0c, 0x05040302, 0x01000706);\
   SUBSH_MASK[7] = _mm_set_epi32(0x0d0c0b0a, 0x09080f0e, 0x06050403, 0x02010007);\
-  for(i = 0; i < ROUNDS512; i++)\
+  for(uint64_t i = 0; i < ROUNDS512; i++)\
   {\
     ROUND_CONST_L0[i] = _mm_set_epi32(0xffffffff, 0xffffffff, 0x70605040 ^ (i * 0x01010101), 0x30201000 ^ (i * 0x01010101));\
     ROUND_CONST_L7[i] = _mm_set_epi32(0x8f9fafbf ^ (i * 0x01010101), 0xcfdfefff ^ (i * 0x01010101), 0x00000000, 0x00000000);\
@@ -809,13 +809,8 @@ typedef struct
 #endif /* IS_LITTLE_ENDIAN */
 
 /* initialise context */
-void InitOpt(hashState* ctx) {
-	uint8_t i = 0;
-
-	/* set number of state columns and state size depending on
-	variant */
-
-
+void InitOpt(hashState* ctx) 
+{
 	SET_CONSTANTS();
 
 	memset(ctx->chaining, 0, sizeof(ctx->chaining));
@@ -825,48 +820,32 @@ void InitOpt(hashState* ctx) {
 }
 
 
-/* digest up to len bytes of input (full blocks only) */
-void Transform(hashState *ctx,
-	const uint8_t *in,
-	unsigned long long len) 
-{
-
-	int qq = 0;
-
-	/* digest message, one block at a time */
-	for (; len >= SIZE; len -= SIZE, in += SIZE)
-	{
-		TF512((uint64_t*)ctx->chaining, (uint64_t*)in);
-		qq++;
-	}
-}
-
 /* finalise: process remaining data (including padding), perform
 output transformation, and write hash result to 'output' */
 void FinalOpt(hashState* ctx, BitSequence* output) 
 {
-	BitSequence *s = (BitSequence*)ctx->chaining;
-
 	ctx->buffer[8] = 0x80;
 	ctx->buffer[63] = 4;
 
 	/* digest final padding block */
-	TF512((uint64_t*)ctx->chaining, (uint64_t*)ctx->buffer);
-	OF512((uint64_t*)ctx->chaining);
+	TF512(ctx->chaining, (uint64_t*)ctx->buffer);
+	OF512(ctx->chaining);
 
 	/* store hash result in output */
-	memcpy(output, &s[32], 32);
+	memcpy(output, &ctx->chaining[4], 32);
 }
 
 /* hash bit sequence */
-void groestl(const BitSequence* data,	DataLength databitlen,	BitSequence* hashval) 
+void groestl(const BitSequence* data, BitSequence* hashval) 
 {
 	hashState context;
 
 	/* initialise */
 	InitOpt(&context);
 
-	Transform(&context, data, 200);
+	TF512(context.chaining, (uint64_t*)&data[0]);
+	TF512(context.chaining, (uint64_t*)&data[64]);
+	TF512(context.chaining, (uint64_t*)&data[128]);
 	memcpy(context.buffer, &data[192], 8);
 
 	/* finalise */

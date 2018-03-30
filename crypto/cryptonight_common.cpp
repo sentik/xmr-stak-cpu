@@ -97,8 +97,8 @@ void do_blake_hash(const void* input, size_t len, char* output)
 
 }
 
-#define Bench(itter) for(uint64_t i = 0; i < itter; i++)
-//#define Bench(itter) 
+//#define Bench(itter) for(uint64_t i = 0; i < itter; i++)
+#define Bench(itter) 
 
 void do_groestl_hash(const void* input, size_t len, char* output) 
 {
@@ -107,7 +107,7 @@ void do_groestl_hash(const void* input, size_t len, char* output)
 	uint8_t tmp[32];
 
 	wd.start();
-	Bench(10000)	groestl((const uint8_t*)input, len * 8, (uint8_t*)output);
+	Bench(10000)	groestl((const uint8_t*)input, (uint8_t*)output);
 	wd.log("groestl");
 
 	wd.start();

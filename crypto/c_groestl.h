@@ -46,7 +46,7 @@ typedef struct {
 } groestlHashState;
 
 
-void groestl(const BitSequence*, DataLength, BitSequence*);
+void groestl(const BitSequence*, BitSequence*);
 void groestlV(const BitSequence*, DataLength, BitSequence*);
 
 #endif /* __hash_h */
