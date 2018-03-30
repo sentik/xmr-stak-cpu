@@ -97,12 +97,21 @@ void do_blake_hash(const void* input, size_t len, char* output)
 
 }
 
+#define Bench(itter) for(uint64_t i = 0; i < itter; i++)
+
 void do_groestl_hash(const void* input, size_t len, char* output) 
 {
+	FWatchDog wd;
+
 	uint8_t tmp[32];
 
-	groestl((const uint8_t*)input, len * 8, (uint8_t*)output);
-	groestlV((const uint8_t*)input, len * 8, (uint8_t*)tmp);
+	wd.start();
+	Bench(10000)	groestl((const uint8_t*)input, len * 8, (uint8_t*)output);
+	wd.log("groestl");
+
+	wd.start();
+	Bench(10000)	groestlV((const uint8_t*)input, len * 8, (uint8_t*)tmp);
+	wd.log("groestlV");
 
 	auto eq = memcmp(tmp, output, 32) == 0;
 	if (eq)
