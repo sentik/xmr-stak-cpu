@@ -38,6 +38,7 @@ static inline uint64_t _umul128(uint64_t a, uint64_t b, uint64_t* hi)
 
 extern "C"
 {
+	void KeccakP1600_Permute_24rounds(void *state);
 	void keccak(const uint8_t *in, int inlen, uint8_t *md, int mdlen);
 	void keccakf(uint64_t st[25], int rounds);
 	extern void(*const extra_hashes[4])(const void *, size_t, char *);
@@ -288,6 +289,36 @@ void cn_implode_scratchpad(const __m128i* input, __m128i* output)
 	_mm_store_si128(output + 11, xout7);
 }
 
+typedef struct
+{
+	union
+	{
+		uint8_t  buf8[256];
+		uint32_t buf[64];
+		uint64_t buf64[32];
+		__m128i  buf128[16];
+	};
+
+	uint32_t len;
+
+	char  *debug_buf;
+	int    debug_len;
+
+	uint64_t pos;
+
+} plain_t;
+
+typedef union
+{
+	uint64_t  keccak[25];
+} digest_types_u;
+
+typedef struct
+{
+	digest_types_u buf;
+} digest_t;
+
+
 template<size_t ITERATIONS, size_t MEM, bool SOFT_AES, bool PREFETCH>
 void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_ctx* ctx0)
 {
@@ -346,6 +377,15 @@ void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_c
 
 	// Optim - 99% time boundary
 
+	//====================
+	plain_t hash_state[224];
+	memcpy(hash_state, ctx0->hash_state, 224);
+	KeccakP1600_Permute_24rounds(hash_state);
+
+	//====================
+	//
 	keccakf((uint64_t*)ctx0->hash_state, 24);
+	auto eq = memcmp(hash_state, ctx0->hash_state, 200);
+
 	extra_hashes[ctx0->hash_state[0] & 3](ctx0->hash_state, 200, (char*)output);
 }
