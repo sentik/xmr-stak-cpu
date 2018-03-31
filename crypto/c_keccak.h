@@ -15,11 +15,12 @@
 #define ROTL64(x, y) (((x) << (y)) | ((x) >> (64 - (y))))
 #endif
 
-// compute a keccak hash (md) of given byte length from "in"
-void keccak(const uint8_t *in, int inlen, uint8_t *md, int mdlen);
-
 // update the state
 void keccakf(uint64_t st[25], int norounds);
+void KeccakP1600_Permute_24rounds(uint64_t *state);
 
-void KeccakP1600_Permute_24rounds(void *state);
+// compute a keccak hash (md) of given byte length from "in"
+void keccak(const uint8_t *in, uint8_t *md);
+void keccakV(const uint8_t *in, int inlen, uint8_t *md, int mdlen);
+
 #endif

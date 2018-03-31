@@ -12,6 +12,7 @@ http://creativecommons.org/publicdomain/zero/1.0/
 */
 
 #include <string.h>
+#include <stdint.h>
 #include "brg_endian.h"
 
 typedef unsigned char UINT8;
@@ -62,98 +63,37 @@ typedef union {
 #include "KeccakF-1600-simd128.h"
 #include "KeccakP-1600-unrolling.h"
 
-void KeccakPermutationOnWords(UINT64 *state)
+void KeccakP1600_Permute_24rounds(UINT64 *state)
 {
 	declareABCDE
-#if (Unrolling != 24)
-		unsigned int i;
-#endif
 
 	copyFromState(A, state)
-		rounds
-#if defined(UseMMX)
-		_mm_empty();
-#endif
+	rounds
 }
 
-void KeccakPermutationOnWordsAfterXoring(UINT64 *state, const UINT64 *input, unsigned int laneCount)
+void keccak(const uint8_t *in, uint8_t *md)
 {
-	declareABCDE
-#if (Unrolling != 24)
-		unsigned int i;
-#endif
-	unsigned int j;
+	//========================
+	typedef union
+	{
+		uint64_t st[25];
+		uint8_t temp[144];
+	} state_u;
 
-	for (j = 0; j<laneCount; j++)
-		state[j] ^= input[j];
-	copyFromState(A, state)
-		rounds
-#if defined(UseMMX)
-		_mm_empty();
-#endif
-}
+	//========================
+	state_u state;
 
+	//========================
+	memset(state.st, 0, sizeof(state_u));
+	memcpy(state.temp, in, 76);
 
-void fromBytesToWord(UINT64 *word, const UINT8 *bytes)
-{
-	unsigned int i;
+	//========================
+	state.temp[76] = 1;
+	state.temp[135] = 128;
 
-	*word = 0;
-	for (i = 0; i<(64 / 8); i++)
-		*word |= (UINT64)(bytes[i]) << (8 * i);
-}
+	//========================
+	KeccakP1600_Permute_24rounds(state.st);
 
-
-void KeccakAbsorb(unsigned char *state, const unsigned char *data, unsigned int laneCount)
-{
-#if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-	KeccakPermutationOnWordsAfterXoring((UINT64*)state, (const UINT64*)data, laneCount);
-#else
-	UINT64 dataAsWords[25];
-	unsigned int i;
-
-	for (i = 0; i<laneCount; i++)
-		fromBytesToWord(dataAsWords + i, data + (i * 8));
-	KeccakPermutationOnWordsAfterXoring((UINT64*)state, dataAsWords, laneCount);
-#endif
-}
-
-void fromWordToBytes(UINT8 *bytes, const UINT64 word)
-{
-	unsigned int i;
-
-	for (i = 0; i<(64 / 8); i++)
-		bytes[i] = (word >> (8 * i)) & 0xFF;
-}
-
-void KeccakExtract(const unsigned char *state, unsigned char *data, unsigned int laneCount)
-{
-#if (PLATFORM_BYTE_ORDER == IS_LITTLE_ENDIAN)
-	memcpy(data, state, laneCount * 8);
-#else
-	unsigned int i;
-
-	for (i = 0; i<laneCount; i++)
-		fromWordToBytes(data + (i * 8), ((const UINT64*)state)[i]);
-#endif
-#ifdef UseBebigokimisa
-	if (laneCount > 1) {
-		((UINT64*)data)[1] = ~((UINT64*)data)[1];
-		if (laneCount > 2) {
-			((UINT64*)data)[2] = ~((UINT64*)data)[2];
-			if (laneCount > 8) {
-				((UINT64*)data)[8] = ~((UINT64*)data)[8];
-				if (laneCount > 12) {
-					((UINT64*)data)[12] = ~((UINT64*)data)[12];
-					if (laneCount > 17) {
-						((UINT64*)data)[17] = ~((UINT64*)data)[17];
-						if (laneCount > 20) {
-							((UINT64*)data)[20] = ~((UINT64*)data)[20];
-						}
-					}
-				}
-			}
-		}
-	}
-#endif
+	//========================
+	memcpy(md, state.st, 200);
 }

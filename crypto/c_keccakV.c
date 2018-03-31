@@ -136,10 +136,14 @@ void keccakf(uint64_t st[25], int rounds)
 	}
 }
 
-// compute a keccak hash (md) of given byte length from "in"
+
+#define HASH_DATA_AREA 136
+#define KECCAK_ROUNDS 24
+
 typedef uint64_t state_t[25];
 
-void keccak(const uint8_t *in, int inlen, uint8_t *md, int mdlen)
+
+void keccakV(const uint8_t *in, int inlen, uint8_t *md, int mdlen)
 {
 	state_t st;
 	uint8_t temp[144];
@@ -147,15 +151,15 @@ void keccak(const uint8_t *in, int inlen, uint8_t *md, int mdlen)
 
 	rsiz = sizeof(state_t) == mdlen ? HASH_DATA_AREA : 200 - 2 * mdlen;
 	rsizw = rsiz / 8;
-	
+
 	memset(st, 0, sizeof(st));
 
-	for ( ; inlen >= rsiz; inlen -= rsiz, in += rsiz) {
+	for (; inlen >= rsiz; inlen -= rsiz, in += rsiz) {
 		for (i = 0; i < rsizw; i++)
-			st[i] ^= ((uint64_t *) in)[i];
+			st[i] ^= ((uint64_t *)in)[i];
 		keccakf(st, KECCAK_ROUNDS);
 	}
-	
+
 	// last block and padding
 	memcpy(temp, in, inlen);
 	temp[inlen++] = 1;
@@ -163,7 +167,7 @@ void keccak(const uint8_t *in, int inlen, uint8_t *md, int mdlen)
 	temp[rsiz - 1] |= 0x80;
 
 	for (i = 0; i < rsizw; i++)
-		st[i] ^= ((uint64_t *) temp)[i];
+		st[i] ^= ((uint64_t *)temp)[i];
 
 	keccakf(st, KECCAK_ROUNDS);
 

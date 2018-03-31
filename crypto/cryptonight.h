@@ -11,7 +11,7 @@ extern "C" {
 #define MEMORY  2097152
 
 typedef struct {
-	uint8_t hash_state[224]; // Need only 200, explicit align
+	uint8_t hash_state[224];
 	uint8_t* long_state;
 	uint8_t ctx_info[24]; //Use some of the extra memory for flags
 } cryptonight_ctx;

@@ -38,8 +38,10 @@ static inline uint64_t _umul128(uint64_t a, uint64_t b, uint64_t* hi)
 
 extern "C"
 {
-	void KeccakPermutationOnWords(uint64_t *state);
-	void keccak(const uint8_t *in, int inlen, uint8_t *md, int mdlen);
+	void KeccakP1600_Permute_24rounds(uint64_t *state);
+	void keccak(const uint8_t *in, uint8_t *md);
+	void keccakV(const uint8_t *in, int inlen, uint8_t *md, int mdlen);
+
 	void keccakf(uint64_t st[25], int rounds);
 	extern void(*const extra_hashes[4])(const void *, size_t, char *);
 
@@ -292,7 +294,7 @@ void cn_implode_scratchpad(const __m128i* input, __m128i* output)
 template<size_t ITERATIONS, size_t MEM, bool SOFT_AES, bool PREFETCH>
 void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_ctx* ctx0)
 {
-	keccak((const uint8_t *)input, len, ctx0->hash_state, 200);
+	keccak(static_cast<const uint8_t *>(input), ctx0->hash_state);
 
 	// Optim - 99% time boundary
 	cn_explode_scratchpad<MEM, SOFT_AES, PREFETCH>((__m128i*)ctx0->hash_state, (__m128i*)ctx0->long_state);
@@ -346,6 +348,6 @@ void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_c
 	cn_implode_scratchpad<MEM, SOFT_AES, PREFETCH>((__m128i*)ctx0->long_state, (__m128i*)ctx0->hash_state);
 
 	// Optim - 99% time boundary
-	KeccakPermutationOnWords((uint64_t*)ctx0->hash_state);
+	KeccakP1600_Permute_24rounds((uint64_t*)ctx0->hash_state);
 	extra_hashes[ctx0->hash_state[0] & 3](ctx0->hash_state, 200, (char*)output);
 }
