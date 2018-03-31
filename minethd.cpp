@@ -398,6 +398,7 @@ void minethd::work_main()
 		assert(sizeof(job_result::sJobID) == sizeof(pool_job::sJobID));
 		memcpy(result.sJobID, oWork.sJobID, sizeof(job_result::sJobID));
 
+		_mm_prefetch(reinterpret_cast<const char*>(&oWork.bWorkBlob[0]), _MM_HINT_T0);
 		while(iGlobalJobNo.load(std::memory_order_relaxed) == iJobNo)
 		{
 			if ((iCount & 0xF) == 0) //Store stats every 16 hashes
@@ -411,7 +412,7 @@ void minethd::work_main()
 
 			*piNonce = ++result.iNonce;
 
-			hash_fun(oWork.bWorkBlob, oWork.iWorkSize, result.bResult, ctx);
+			hash_fun(oWork.bWorkBlob, result.bResult, ctx);
 
 			if (*piHashVal < oWork.iTarget)
 				executor::inst()->push_event(ex_event(result, oWork.iPoolId));

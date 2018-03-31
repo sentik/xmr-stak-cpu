@@ -155,6 +155,14 @@ static inline void soft_aes_round(__m128i key, __m128i* x0, __m128i* x1, __m128i
 template<size_t MEM, bool SOFT_AES, bool PREFETCH>
 void cn_explode_scratchpad(const __m128i* input, __m128i* output)
 {
+	// prefetch expkey, xmminput and enough longoutput for 4 iterations
+	if (PREFETCH)
+	{
+		_mm_prefetch(reinterpret_cast<const char*>(&input[0]), _MM_HINT_T0);
+		_mm_prefetch(reinterpret_cast<const char*>(&input[4]), _MM_HINT_T0);
+		_mm_prefetch(reinterpret_cast<const char*>(&input[8]), _MM_HINT_T0);
+	}
+
 	// This is more than we have registers, compiler will assign 2 keys on the stack
 	__m128i xin0, xin1, xin2, xin3, xin4, xin5, xin6, xin7;
 	__m128i k0, k1, k2, k3, k4, k5, k6, k7, k8, k9;
@@ -220,6 +228,18 @@ void cn_explode_scratchpad(const __m128i* input, __m128i* output)
 template<size_t MEM, bool SOFT_AES, bool PREFETCH>
 void cn_implode_scratchpad(const __m128i* input, __m128i* output)
 {
+	if (PREFETCH)
+	{
+		_mm_prefetch(reinterpret_cast<const char*>(&output[0]), _MM_HINT_T0);
+		_mm_prefetch(reinterpret_cast<const char*>(&output[4]), _MM_HINT_T0);
+		_mm_prefetch(reinterpret_cast<const char*>(&output[8]), _MM_HINT_T0);
+
+
+		_mm_prefetch(reinterpret_cast<const char*>(&input[0]), _MM_HINT_T0);
+		_mm_prefetch(reinterpret_cast<const char*>(&input[4]), _MM_HINT_T0);
+		_mm_prefetch(reinterpret_cast<const char*>(&input[8]), _MM_HINT_T0);
+	}
+
 	// This is more than we have registers, compiler will assign 2 keys on the stack
 	__m128i xout0, xout1, xout2, xout3, xout4, xout5, xout6, xout7;
 	__m128i k0, k1, k2, k3, k4, k5, k6, k7, k8, k9;
@@ -292,9 +312,9 @@ void cn_implode_scratchpad(const __m128i* input, __m128i* output)
 }
 
 template<size_t ITERATIONS, size_t MEM, bool SOFT_AES, bool PREFETCH>
-void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_ctx* ctx0)
+void cryptonight_hash(const uint8_t* input, uint8_t* output, cryptonight_ctx* ctx0)
 {
-	keccak(static_cast<const uint8_t *>(input), ctx0->hash_state);
+	keccak(input, ctx0->hash_state);
 
 	// Optim - 99% time boundary
 	cn_explode_scratchpad<MEM, SOFT_AES, PREFETCH>((__m128i*)ctx0->hash_state, (__m128i*)ctx0->long_state);
@@ -311,15 +331,16 @@ void cryptonight_hash(const void* input, size_t len, void* output, cryptonight_c
 	// Optim - 90% time boundary
 	for(size_t i = 0; i < ITERATIONS; i++)
 	{
-		__m128i cx;
-		cx = _mm_load_si128((__m128i *)&l0[idx0 & 0x1FFFF0]);
+		//===========================================================
+		__m128i cx = _mm_load_si128(reinterpret_cast<__m128i *>(&l0[idx0 & 0x1FFFF0]));
 
 		if(SOFT_AES)
 			cx = soft_aesenc(cx, _mm_set_epi64x(ah0, al0));
 		else
 			cx = _mm_aesenc_si128(cx, _mm_set_epi64x(ah0, al0));
-
-		_mm_store_si128((__m128i *)&l0[idx0 & 0x1FFFF0], _mm_xor_si128(bx0, cx));
+		_mm_store_si128(reinterpret_cast<__m128i *>(&l0[idx0 & 0x1FFFF0]), _mm_xor_si128(bx0, cx));
+		//===========================================================
+		
 		idx0 = _mm_cvtsi128_si64(cx);
 		bx0 = cx;
 
